@@ -1,0 +1,404 @@
+---
+title: "E6690: Statistical Learning for Bio & Info System Final Project - Stop-and-Frisk in New York City"
+author: "Lillian Chik, Mun Shin (CVN - mc3549)"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Desktop/E6690_mc3549_FinalProject/Data")
+library(kernlab)
+data(spam)
+```
+
+# 1. Introduction
+
+Stop-and-frisk program is a policy in New York City where police officers can stop, detain, and search a person if they suspect he carries a weapon or other forms of contraband. Every time a police officer stopped a suspect, he must document the stop by completing a UF-250 stop-and-frisk form. The data I used in the analysis derived from this form, and it includes information about the suspect’s ethnicity, location and time of the stop, and reason of the stop and whether the suspect is eventually being searched. 
+
+On this paper, I performed statistical analysis such as t-tests, linear regression, Bayesian model and quantile-quantile plotting and provide reasoning of why the stop-and-frisk program is not effective in reducing violent crimes in New York City. 
+
+# 2. Original Data Set and Paper
+
+To access racial disparities in police interactions with the public, Goel et. al. [1] compiled and analyzed a dataset detailing over 2.9 million stops conducted by the NYPD between January 1, 2008 and December 31th, 2012. They found that that Black and Hispanics New Yorkers are stopped more often than White New Yorkers relative to their share of the precinct population. Among stopped New Yorkers-and after controlling for age, gender, time and location-Blacks and Hispanics New Yorkers are more likely to be ticketed, searched, and arrested than White New Yorkers. In the case of search decisions, they explicitly test for discrimination by examining both the rate at which New Yorkers are searched and the likelihood searches turn up contraband. They find evidence that the bar for searching Black and Hispanic New Yorkers is lower than for searching White New Yorkers. Finally, they found that by conducting only 6% of stops that have the highest probability to result in weapon seizure, it can reduced the total number of searches and misdemeanors for all race groups, though a race gaps still persists. Goel et. al. conclude by offering recommendations for improving data collection, analysis, and reporting by law enforcement agencies [1].
+
+# 3. Reproduce
+
+I adapted Goel et. al.’s approaches and examined a few questions to determine the effectiveness of the stop-and-frisk policy and understand whether or not it is a form of racial profiling against certain minorities group in New York City. For the analysis, I used the stop-and-frisk data publicly released by the New York City police department. It listed information about each of the 3.8 million documented stops from 2003 to 2017. The data is in the form of large csv files, and each column of the spreadsheet describes a piece of information about the stop. All the columns in the data followed the same format as the UF-250 stop-and-frisk form, and over 112 features of the stops are documented. 
+
+## 3a
+
+```{r, echo = FALSE, eval = TRUE}
+sqf2010 = read.csv("2010.csv")
+sqf2015 = read.csv("2015.csv")
+```
+
+In the stop-question-frisk (SQF) policy, because the police officers are responsible for reporting instances of suspected crimes, it raises the question of whether or not the data the police officers have recorded is accurate. In particular, I was interested to understand if the police officers have identify the suspect’s race correctly because this will determine what affect, if any, the impact misidentification has on the data. In this analysis, I only looked at a small sample of data in which the suspects were being identified as Asians/Pacific Islander or Hispanic. 
+
+Using conditional probability, I assumed the probability that a police officer has correctly identify an Asian/Islander suspect is 0.95, or else the Asian Islander suspect is identified incorrectly as Hispanic. I also assumed the probability that a police officer has correctly identify a Hispanic suspect is 0.95, or else the Hispanic suspect is identified incorrectly as Asian/Pacific Islander. Using these assumptions, I calculate the probability that a suspect who is subject to stops and searches is Asian/Pacific Islander, and the probability that a suspect who is subject to stops and searches is Hispanic in the 2010 SQF data. This problem has two equations (one for Asian/Pacific Islanders, and one for Hispanics) and two unknowns (the actual percentage of Hispanic and Asian/Islander suspects in the New York City population). Using a set of formulas, I calculated the probability that a suspect who was being stopped is Hispanic is 0.906 and the probability that a suspect who was being stopped is Asian/Islander is 0.094. 
+
+From there, I used a set of conditional probability formulas with Bayes’ Theorem and calculated the probability that the stopped suspect the police officer has identified as Asian/Pacific Islander is actually an Asian/Pacific Islander is 0.494 with false positive as 0.506, and the probability that the stopped suspect the police officer has identified as Hispanic is actually a Hispanic is 0.997 with false positive as 0.03. Going back to the initial assumption, it means the 0.05 of the Hispanics the police officers have identified incorrectly is consists of 0.506 of the Asian/Pacific Islander stopped suspects in the data, and 0.05 of the Asian/Pacific Islander the police offers have identified incorrectly is consists of 0.03 of the Hispanic stopped suspects in the 2010 SQF data. The results indicated that the race column of the data might be very unreliable especially for the subset of Asian/Pacific Islander stopped suspects. 
+
+**Table of the total number of stops for each race**  
+```{r, echo = FALSE, eval = TRUE}
+table(sqf2010$race)
+```
+
+The number of Black Hispanic suspects is 38689.  
+The number of White Hispanic suspects is 150637.  
+The number of Asian/Pacific Islander suspects is 19732.  
+Then, the total number of Hispanic and Asian/Pacific Islander suspects is 38689 + 150637 + 19732 = 209058.  
+
+Let  
+Event $I$: a suspect is identified as Hispanic = 0.906  
+Event $H$: a suspect is actually Hispanic = 0.094  
+Event $I^c$: a suspect is identified as not Hispanic (i.e. suspect is identified as Asian/Pacific Islander) = 0.997  
+Event $H^c$: a suspect is not actually Hispanic (i.e. suspect is actually Asian/Pacific Islander) = 0.494  
+
+Then  
+The probability that a stopped suspect is Hispanic: $P(I)$  
+The probability that a stopped suspect is Asian/Pacific Islander: $P(I^c)$  
+The probability that someone who is identified by the officer as Hispanic is actually Hispanic: $P(H|I)$  
+The probability that someone who is identified as Asian/Pacific Islander is actually Asian/Pacific Islander: $P(H^c|I^c)$  
+
+
+$P(I) = \frac{38689+150637}{38689+150637+19732} = 0.906$  
+$P(I^c) = \frac{19732}{38689+150637+19732} = 0.094$  
+
+We know that a Hispanic person has a 95\% chance of correctly being identified as Hispanic, and otherwise is misidentified as Asian/Pacific Islander, so  
+$P(I|H) = 0.95$  
+
+We know that an Asian/Pacific Islander has a 95\% chance of correctly being identified as Asian/Pacific Islander, and otherwise is misidentified as Hispanic, so  
+$P(I^c|H^c) = 0.95$  
+
+From the Law of Total Probability, we get  
+$P(H) = P(H|I)P(I) + P(H|I^c)P(I^c)$  
+
+Using Bayes’ Rule, we solve for  
+$P(H|I) = \frac{P(I|H)P(H)}{P(I)}$  
+
+Plug in P(H):  
+$P(H|I) = \frac{P(I|H) [P(H|I)P(I) + P(H|I^c)P(I^c)]}{P(I)}$  
+Plug in values:	 
+$P(H|I) = \frac{0.95 * [ P(H|I) * 0.906 + P(H|I^c) * (0.094)]}{0.906}$		(1)  
+
+Using Bayes’ Rule, we solve for  
+$P(H^c|I^c) = \frac{P(I^c|H^c)P(H^c)}{P(I^c)}$  
+$1-P(H|I^c) = \frac{P(I^c|H^c) [1-P(H)]}{P(I^c)}$  
+
+Plug in P(H) and values:  
+$1-P(H|I^c) = \frac{0.95 * [1-(P(H|I) * 0.906 + P(H|I^c) * 0.094)]}{0.094}$    	(2)  
+
+Solving (1) and (2):  
+$P(H|I) = \frac{4066}{4077} = 0.997$  
+$P(H|I^c) = \frac{214}{423} = 0.506$  
+$P(H^c|I^c) = 1 - P(H|I^c) = 1 - 0.506 = 0.494$  
+
+## 3b
+
+For this analysis, I want to understand if there is any statistical significance on the percentages an individual who was stopped by police officers in 2010 SQF data, by race and by borough. 
+
+For the first part, I used linear regression model to compare the percentage that a person was being frisked among races with the subset of Asian/Pacific Islander stopped suspects as my baseline. By comparing the percentage an individual who was stopped is identified as Asian/Islander and the percentages a stopped suspect is in other races, it showed that most subsets (Blacks, White-Hispanics, Black Hispanics, Others, and White) are indeed statistical significance of being stopped because their respective p-values are less than 0.05. On the other hand, Unknowns and American Indian/Alaskan Natives subsets are statistical insignificance because their respective p-values are more than 0.05 when comparing its respective percentage difference to the percentage an individual who was stopped is identified as Asian/Pacific Islander. Whites has the lowest estimate of -0.022294 and Black-Hispanic has the highest estimate of 0.161044, it means Whites have the lowest probability of being stopped while Black-Hispanics have the highest probability of being stopped. 
+
+**Table comparing frisk rates for each race:**  
+```{r, echo=FALSE, eval=TRUE}
+table(sqf2010$frisked,sqf2010$race) #table that compared frisked rates for each race
+```
+
+**Linear regression model to compare frisk rates between races (Asian/Pacific islander used as baseline):**  
+```{r, echo=FALSE, eval=TRUE}
+sqf2010$r2 <-relevel(sqf2010$race, "ASIAN/PACIFIC ISLANDER")
+m2<- lm(frisked ~ r2, data = sqf2010) 
+summary(m2)
+```
+
+On the second part, I also used linear regression to compare the percentage that a person was being frisked among all boroughs to the subset in Manhattan. Looking at the p-values, the result showed that most subsets (Queens, Staten Island and Bronx) are indeed statistical significance because their respective p-values are less than 0.05. Meanwhile, Brooklyn and Manhattan have the lowest percentages when comparing the percentages of being stopped among all boroughs. Ranking the estimates from lowest to highest (Staten Island, Manhattan, Brooklyn, Queens and Bronx), these results support the claim that Bronx has the highest crime rate in all of the borough with Black-Hispanics have the highest chance subject to being stopped and frisked in New York City. 
+
+**Table comparing frisk rates for each borough:**  
+```{r, echo=FALSE, eval=TRUE}
+table(sqf2010$frisked,sqf2010$city) #table that compared frisked rates for each borough
+```
+
+**Linear regression model to compare frisk rates between boroughs (Manhattan used as baseline):**  
+```{r, echo=FALSE, eval=TRUE}
+sqf2010$city3 <-relevel(sqf2010$city, "MANHATTAN") #
+b3<- lm(frisked ~ city3, data = sqf2010) 
+summary(b3)
+```
+## 3c
+
+In this problem, I want to compare if there is any significance difference between the percentages an individual is being frisked, by gender and by age. To do this, I used 2010 SQF data and plotted the age histogram and Q-Q Plot of the male and female stopped suspects. I want to determine if the male and female suspects have equal likelihood of being frisked among all ages. Looking at the result, both histograms are not normally distributed and similar in shapes. However, they are skewed to the right with the mean age greater than the median. It means the female and male suspects who are being frisked are mostly young people. On the Q-Q Plots, the line is skewed at the ends because some of the data in the age column are 0 or 999 because the police officers are unsure about the age of the suspect he reported. 
+
+**Histograms and QQ Plots for the distribution of the ages of males and ages of females in the 2010 data**  
+```{r, echo=FALSE, eval=TRUE}
+
+# Separate the data for ages into male and female sections
+agesForMales <- sqf2010$age[sqf2010$sex == "M"]
+agesForFemales <- sqf2010$age[sqf2010$sex == "F"]
+
+# Clean out obviously wrong values
+agesForMales <- agesForMales[agesForMales > 0 & agesForMales < 100]
+agesForFemales <- agesForFemales[agesForFemales > 0 & agesForFemales < 100]
+
+par(mfrow=c(2,2))
+hist(agesForMales, main = "Ages Of Men Stopped")
+hist(agesForFemales, main = "Ages Of Women Stopped")
+
+# Create Q-Q Normal Plots of the two sets of data to determine whether or not
+# they are normally distributed
+qqnorm(agesForMales, main = "Normal Q-Q Plot for Male Ages")
+qqline(agesForMales, distribution = qnorm)
+qqnorm(agesForFemales, main = "Normal Q-Q Plot for Female Ages")
+qqline(agesForFemales, distribution = qnorm)
+```
+
+I also used Q-Q Plots to compare the age distribution of the male suspects to all the population and the age distribution of the female suspect to the male suspects. Although the number of male suspects being frisked are much higher in ratio compared to the number of female suspects, but their age distributions are still very similar to each other and their Q-Q plots can be considered as linear. From this, it means that gender is not an influencing factor that contribute to the likelihood a person will be frisked by police officers.
+
+**QQ plots for the ages of male suspects compared to the ages of female suspects as well as the ages of males suspects compared to ages of the entire population:**  
+```{r, echo=FALSE, eval=TRUE, out.width='300px'}
+par(mfrow=c(1,2), ps=10)
+# Create a Q-Q plot to compare them
+qqplot(agesForFemales, agesForMales, main = "Q-Q Plot of Male/Female Ages")
+
+# Compare ages of male suspects to that of the entire population
+allAges <- sqf2010$age[sqf2010$age > 0 & sqf2010$age < 100]
+qqplot(allAges, agesForMales, main = "Q-Q Plot of Male/All Ages")
+```
+
+## 4. New Approach
+
+## 4a
+
+For this analysis, I want to find out the probability that a person is subject to stops and searches for the total population in 2015 and for refused to provide an ID at a 0.95 confidence interval. I want to compare the difference between these two probabilities to understand if the likelihood of being arrested will increase if the suspect refuse to provide an ID while the police offers are detaining him.  
+
+**Table comparing frisk rates for different types of identification provided:**  
+``` {r, echo = FALSE, eval = TRUE}
+table(sqf2015$frisked, sqf2015$typeofid)
+```
+
+**Entire population:**  
+
+$\hat{p} = \frac{15257}{7306 + 15257} =$ `r  15257/(7306 + 15257)`
+$n = 22563$  
+
+*95\% confidence interval:*  
+$(\hat{p} - 1.96 * \sqrt{\frac{\hat{p}(1-\hat{p})}{n-1}}, \hat{p} + 1.96 * \sqrt{\frac{\hat{p}(1-\hat{p})}{n-1}})$  
+$(0.6701, 0.6823)$  
+ 
+**Refused to give identification:**  
+
+$\hat{p} = \frac{390}{249 + 390} =$ `r  390/(249+390)`
+$n = 639$  
+
+*95\% confidence interval:*  
+$(\hat{p} - 1.96 * \sqrt{\frac{\hat{p}(1-\hat{p})}{n-1}}, \hat{p} + 1.96 * \sqrt{\frac{\hat{p}(1-\hat{p})}{n-1}})$  
+$(0.5725, 0.6482)$  
+
+Looking the results above, the probability that a person is subject to stops and searches is between 0.6701 and 0.6823 for the total population at a 0.95 confidence interval. But when the sample used for analysis changes from total population to a subset of individuals who refused to provide an ID, the probability that a person is subject to stops and searches decreases to between 0.5725 and 0.6482. This seems to suggest that a person who refused to provide an ID is less likely to be stopped by the police officers than the entire population. 
+
+To further support this claim, I performed t-test to compare the difference between the probability between these two cases. At a 0.95 confidence interval, the difference estimates indicates that the probability that a person is subject to stops and searches for the total population is between 0.02746674 and 0.10426706 greater than the probability that a person is being stopped after refusing to provide an ID. This result is consistent with my previous analysis in this problem, and infers that people who refused to identify themselves have a lesser probability to be stopped than the entire population.
+
+**t-test for the difference between the proportion of suspects frisked for the entire population and the proportion of suspects frisked for suspects who refused to give their identification**  
+```{r, echo=FALSE, eval=TRUE}
+friskedTotal <- sqf2015$frisked
+friskedRefusedID <- sqf2015$frisked[sqf2015$typeofid == "REFUSED"]
+t.test(x=friskedTotal, y=friskedRefusedID, conf.level=0.95)
+```
+
+## 4b
+
+On the 2010 SQF data, I want to understand which of the binary variables have a statistical significance toward the length of stops (perstop) made by police officers.   
+
+**Linear regression for log(`perstop` + 1) against `arstmade`, `searched`, `inside`, `sumissue`, `frisked`, `weap`, `contrabn`, `radio`, and `pf`**  
+```{r, echo = FALSE, eval = TRUE}
+perstopFiltered <- sqf2010$perstop[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+perstopLog <- log(perstopFiltered + 1)
+arstmadeFiltered <- sqf2010$arstmade[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+searchedFiltered <- sqf2010$searched[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+insideFiltered <- sqf2010$inside[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+sumissueFiltered <- sqf2010$sumissue[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+friskedFiltered <- sqf2010$frisked[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+weapFiltered <- sqf2010$weap[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+contrabnFiltered <- sqf2010$contrabn[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+radioFiltered <- sqf2010$radio[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+pfFiltered <- sqf2010$pf[sqf2010$perstop < 40 & sqf2010$perstop > 0]
+
+model <- lm(perstopLog ~ arstmadeFiltered + searchedFiltered + insideFiltered + sumissueFiltered + friskedFiltered + weapFiltered + contrabnFiltered + radioFiltered + pfFiltered, data = sqf2010)
+summary(model)
+```
+\newpage  
+
+**Plot, histogram, and Normal QQ-plot of residuals for regression line**  
+```{r, echo = FALSE, eval = TRUE}
+par(mfrow=c(1,1))
+plot(model$residuals, main = "Plot of Residuals")
+```
+
+```{r, echo = FALSE, eval = TRUE}
+par(mfrow=c(1,2))
+hist(model$residuals, main = "Histogram of Residuals")
+qqnorm(model$residuals, main = "Normal QQ Plot of Residuals")
+qqline(model$residuals, distribution = qnorm)
+```
+
+At first, I used linear regression to map log(perstop+1) as the dependent variable and treated the binary variables as the independent variables. I also revised the data such that it eliminates the outlier points of the perstop parameter, by only keeping the values greater than 0 and less than 40. Looking at the histogram, Q-Q Plot, and residual plot, the result seems to suggest that the residuals are normally distributed. Using this, we can confirmed that the p-values are valid in the linear regression model. Looking at the p-values, all the binary variables have p-values less than 2E-16 except weap with p-value of 0.166. It means we can not reject the null hypothesis that weap and log(perstop+1) are independent from each other. Therefore, I performed a second linear regression analysis where the binary variable: weap is excluded. 
+
+\newpage  
+
+**Linear regression for log(`perstop` + 1) against `arstmade`, `searched`, `inside`, `sumissue`, `frisked`, `contrabn`, `radio`, and `pf`**  
+```{r, echo = FALSE, eval = TRUE}
+model2 <- lm(perstopLog ~ arstmadeFiltered + searchedFiltered + insideFiltered + sumissueFiltered + friskedFiltered + contrabnFiltered + radioFiltered + pfFiltered, data = sqf2010)
+summary(model2)
+```
+
+**Plot, histogram, and Normal QQ-plot of residuals for regression line**  
+```{r, echo = FALSE, eval = TRUE}
+par(mfrow=c(1,1))
+plot(model2$residuals, main = "Plot of Residuals")
+```
+
+```{r, echo = FALSE, eval = TRUE}
+par(mfrow=c(1,2))
+hist(model2$residuals, main = "Histogram of Residuals")
+qqnorm(model2$residuals, main = "Normal QQ Plot of Residuals")
+qqline(model2$residuals, distribution = qnorm)
+```
+
+Looking at the result, it can be infer that all of the binary variables have statistically significance on the length of stops by the police officers, except weap. The distribution of residuals of the linear regression can also approximated by a normal distribution. The R-squared value is a small value (0.05239), and it means the binary variables contribute to the 0.05 variance in the length of stops data made by police officers. The result is logical because there could be many other factors that contribute to the length of stops made by police officers besides the binary variables described in the analysis. 
+
+## 4c
+
+I also looked into some of the claims made by the New York Civil Liberties Union on the 2003-2013 report [4] and performed analysis to determine whether the claims are accurate or not. 
+
+a)	New York Civil Liberties Union [4] claimed that there is 0.519 probability that police officers conducted searches in all the stops. To determine if this claim is true, I used a two-tailed, one sample t-test with a null hypothesis that p = 0.519. Looking at the result, I rejected the null hypothesis that there is 0.519 probability police officers conducted searches in all the stops because the p-value is less than 2.2E-16. 
+
+**t-test for frisk rate of all stops (2010):**  
+```{r, echo=FALSE, eval=TRUE}
+frisked <- sqf2010$frisked
+t.test(x = frisked, mu = .519, alternative = "two.sided", conf.level = .95)
+`````
+
+b) New York Civil Liberties Union [4] also claimed that there is only 0.02 probability that a weapon is found when police officers conducted stops and searches on a suspect. To determine if this claim is true, I also used a two-tailed, one sample t-test with a null hypothesis that p-0.02. Looking at the result, I rejected the null hypothesis that only 0.02 probability that weapon is found in all the stop-and-search. But because the 0.95 confidence interval is between 0.02059377 and 0.02156316, it can infer New York Civil Liberties Union’s claim about racial discrimination about stop-and frisk is still valid, because the values are very close the ones reported by them. 
+
+**t-test for weapon-find rate in all frisks (2010):**  
+```{r, echo=FALSE, eval=TRUE}
+foundWithWeapon <- sqf2010$weap[sqf2010$frisked == 1]
+t.test(x = foundWithWeapon, mu = .02, alternative = "two.sided", conf.level = .95)
+```
+
+c) Since 2014, New York City has implemented a stricter rule for the stop-and-frisk policy and the total number of stop-and-frisk cases has decreased. However, I want to analyze if this claim is true by comparing the 2010 and 2015 SQF data on the probability that a suspect is being stopped by police officers. Looking at the result, I rejected the null hypothesis that the probability a person is stopped by police officers is the same for both 2010 and 2015. It suggests that even with the new restriction on the stop-and-frisk policy in 2014, the probability a person is stopped by police officers increased, it means the new restriction is not very effective in stopping the marginal deterrent effects it has on the people. 
+
+**t-test for frisk rate in all stops (2015)**  
+```{r, echo=FALSE, eval=TRUE}
+frisked2015 <- sqf2015$frisked
+t.test(x = frisked, y = frisked2015, alternative = "two.sided", conf.level = .95)
+```
+
+d)	NYC Department of City Planning [3] claimed that there is 0.228 probability that Blacks are being stopped by the police officers, which is equivalent to the number of Blacks compared to the total population in New York City. To test if this claim is true, I used t-test and set the alternative hypothesis where p could be greater or less than 0.228, meaning the probability that Blacks are being stopped by the police officers was higher or lower than its actual population proportion in New York City. Looking at the result, I reject the null hypothesis that the probability Blacks are stopped by police officers is the equal to its actual proportion in the total population. In fact, because the 0.95 confidence interval is between 0.5227537 and 0.5252784, it means Blacks are between 0.295 and 0.297 higher likelihood to be frisked by police officers compared to its actual population proportion of 0.228. 
+
+**Hypothesis test:**  
+```{r, echo=FALSE, eval=TRUE}
+stopsBlack <- sqf2010$race=="BLACK"
+stopsBlack2 <- vector("numeric",601285)
+
+
+for (i in 1:601285){  
+  if(stopsBlack[i] == TRUE)
+  {
+    stopsBlack2[i] = 1
+  }
+  else
+  {
+    stopsBlack2[i] = 0
+  }
+}
+
+
+t.test(x = stopsBlack2, # Sample data
+       mu = 0.228,
+       conf.level = 0.95 # Desired level of significance
+) #passed due to low p-value
+```
+
+e) The same analysis also applied to the subset of Hispanics group in the data. I rejected the null hypothesis that the probability 0.285 Hispanics are being stopped by police officers is the same as its actual proportion in the total population, because the p-value is less than 0.05. The 0.95 confidence interval is between 0.313695 and 0.316043, it means Hispanics are between 0.029 and 0.031 more likely to be frisked by police officers compared to its actual population proportion of 0.285. From these results, I can infer that the Blacks and Hispanics are subject to stops and searches more often than its actual population proportion in New York City.
+
+**Hypothesis test:**  
+```{r, echo=FALSE, eval=TRUE}
+stopsHISPB <- sqf2010$race=="BLACK-HISPANIC"
+stopsHISPW <- sqf2010$race=="WHITE-HISPANIC"
+stopsHisp2 <- vector("numeric",601285)
+
+for (i in 1:601285){
+  if((stopsHISPB[i] == TRUE)|(stopsHISPW[i] == TRUE))
+  {
+    stopsHisp2[i] = 1
+  }
+  else
+  {
+    stopsHisp2[i] = 0
+  }
+}
+
+t.test(x = stopsHisp2, # Sample data
+       mu = 0.285,
+       alternative = "two.sided",
+       conf.level = 0.95)# Desired level of significance 
+```
+
+f) New York Civil Liberties Union [4] claimed that among all the stops, there is only 0.019 probability that a weapon is found in Blacks and Latinos suspects, and 0.033 probability that a weapon is found in Whites suspects. Because the p-values is less than 2.2E-16 and alpha level is 0.05, I rejected the null hypothesis that the probability a Black, Latino or White suspect was being frisked with a weapon was found is the same as the probabilities claimed by the New York Civil Liberties Union. In contrast, the 0.95 confidence intervals for Blacks/Latinos suspects and Whites suspects are smaller than the numbers reported by the New York Civil Liberties Union. Moreover, because the p-value is less than 2.2E-16 and alpha level is 0.05, I rejected the null hypothesis and concluded that the probability that Blacks/Latinos suspects were being frisked with a weapon found is actually smaller compared to Whites suspects. 
+
+**Table by race of suspects upon whom weapons were and were not found (0 corresponds to weapon not found, 1 corresponds to weapon found):**  
+```{r, echo=FALSE, eval=TRUE}
+table(sqf2010$race, sqf2010$weap)
+```
+
+**Proportion of stops resulting in a weapon found for each race:**  
+```{r, echo=FALSE, eval=TRUE}
+races = c("AMERICAN INDIAN/ALASKAN NATIVE", "ASIAN/PACIFIC ISLANDER", "BLACK", "BLACK-HISPANIC", "OTHER", "UNKNOWN", "WHITE", "WHITE-HISPANIC")
+proportions = c(16/2579, 194/19732, 3477/315083, 552/38689, 116/15360, 51/4395, 1118/54810, 2074/150637)
+df = data.frame(races, proportions)
+df
+```
+
+**Testing for Blacks/Latinos proportion:**  
+```{r, echo = FALSE, eval=TRUE}
+#sqf2010 = read.csv("2010.csv")
+BlackLatinoWeapons <- sqf2010$weap[sqf2010$race == "BLACK" | sqf2010$race == "BLACK-HISPANIC" | sqf2010$race == "WHITE-HISPANIC"]
+t.test(x = BlackLatinoWeapons, mu = .019, alternative = "two.sided", conf.level = 0.95)
+```
+
+**Testing for White proportion:**  
+```{r, echo = FALSE, eval=TRUE}
+#sqf2010 = read.csv("2010.csv")
+WhiteWeapons <- sqf2010$weap[sqf2010$race == "WHITE"]
+t.test(x = WhiteWeapons, mu = .033, alternative = "two.sided", conf.level = 0.95)
+```
+
+**Testing to see if 2010 Black/Latino proportions are different from White proportions:**  
+```{r, echo = FALSE, eval=TRUE}
+#sqf2010 = read.csv("2010.csv")
+BlackLatinoWeapons <- sqf2010$weap[sqf2010$race == "BLACK" | sqf2010$race == "BLACK-HISPANIC" | sqf2010$race == "WHITE-HISPANIC"]
+WhiteWeapons <- sqf2010$weap[sqf2010$race == "WHITE"]
+t.test(x = BlackLatinoWeapons, y = WhiteWeapons, alternative = "two.sided", conf.level = 0.95)
+```
+
+# 5. Discussion and Conclusion
+
+Based on the analysis on 2010 and 2015 SQF data, I support Goel et. al.’ [1] conclusion that the stop-and-frisk program in New York City is not very effective crime-fighting strategy in reduce the violent crime in the inner cities. There is 0.52 probability that a suspect who is temporarily detained by the police officers is being searched for weapons and other contraband, but only 0.02 probability that a weapon is found. Blacks and Latinos suspects are also more likely subject to stops and searches by police officers compared to Whites suspects. However, they are less likely to be found with a weapon. On the other hand, the stop-and-frisk program do not seem to have a bias towards gender and age, because the analysis showed that the age distribution that a male or female suspect is being stopped is normally distributed. 
+
+From these results, I concluded that stop-and-frisk program is not very effective in reducing crimes within the New York City but rather it opened a renewed dialogue about racial profiling by law enforcement in America because Blacks and Latinos are disproportionally stopped and searched by police officers. 
+
+There are some considerations to be made for future works, such as the use of linear regression to evaluate the relationships described above. Because the dependent variables and the wide array of predictors are binominal, it is most logical to use linear regression to predict the relationships between the parameters in the data. However, there are a number of assumptions to consider in the context of linear regression. 
+
+One of the main assumptions is the predictors are independent. If this assumption is violated, it could result multicollinearity, an inflation in variance, and unstable estimates of the coefficients. In this model, I did not performed rigorous testing to examine the correlations between the predictors. I chose this approach because all of the variables are not continuous, and therefore it is difficult to determine the correlations and the extent at which the variance may be inflated by the potential lack of independence. Because of this, it may result in some of the estimates’ widening standard error when the control variables were incorporated in the model. Another assumptions I made is that the observations are independent. But given the geography density of New York City, it may be possible that some of these stop-and-frisk cases are not independent, and this will impact the standard errors and resulted in unstable estimates. 
+
+There is also limitation in the gathering and non-randomness of the data. The SQF data assumes a randomness by the virtue of the methods used, where police officers self-reported incidents of stop-and frisk. But it is possible there could be a self-selection bias in who is interacting with the police and the targeting bias. The data examines if a bias is occurring once the incident with the police officers has happened, but it does not address if there is a bias with even having the event happened with the police officers at all.  Therefore, the data suggests there is a bias in police practices, and also suggests a non-randomness in how this data is created at the first place, specifically due to the interactions between police officers and suspects. This issue is very complex and can not be easily solve by statistical technique. But rather it delves into the realm of methodological question of what is the best approach to collect these data for future studies, and how to correctly record police interactions with the civilians. As such, the gravity of this issue is beyond the scope of the analysis presented. 
+
+# 6. References
+
+[1] Goel, Sharad and Rao, Justin M. and Shroff, Ravi. _Precinct or Prejudice? Understanding Racial Disparities in New York City's Stop-and-Frisk Policy (March 2, 2015)._ Annals of Applied Statistics, Vol. 10, No. 1, 365–394, 2016. Available at SSRN: https://ssrn.com/abstract=2572718 or http://dx.doi.org/10.2139/ssrn.2572718
+
+[2] *Stop, Question and Frisk Data.* 2003. New York City Police Department. http://www1.nyc.gov/site/nypd/stats/reports-analysis/stopfrisk.page
+
+[3] Bloomberg, Michael, and Amanda Burden. _NYC2010: Results from the 2010 Census : Population Growth and Race/hispanic Composition._ 2011. New York: NYCPlanning, Department of City Planning. https://www1.nyc.gov/assets/planning/download/pdf/data-maps/nyc-population/census2010/pgrhc.pdf
+
+[4] *Stop and Frisk During the Bloomberg Administration.* 2014. New York Civil Liberties Union. http://www.nyclu.org/files/publications/stopandfrisk_briefer_2002-2013_final.pdf 
