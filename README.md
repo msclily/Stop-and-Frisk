@@ -1,6 +1,6 @@
 # Stop-and-Frisk in New York City
 
-By: Lillian Chik, Mun Shin 
+By: Chik, Mun Shin 
 
 This is a statistical analysis of the stop-and-frisk data in New York City. 
 
